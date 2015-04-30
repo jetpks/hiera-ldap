@@ -3,6 +3,30 @@
 
 This module allows hiera to look up entries in LDAP. It will return an array of every matching entry, with that entry represented as a hash of attribute => value. For multivalued attributes, they exist as multiattribute => [attrib1, attrib2, attrib3].
 
+# WARNING WARNING WARNING
+
+THIS MODULE EXPLICITLY DISABLES TLS CERTIFICATE VALIDATION, AND BY EXTENSION
+REMOVES ALL PROTECTION AGAINST MITM ATTACKS PROVIDED BY TLS.
+
+```ruby
+# Monkey patch Net::LDAP::Connection to ensure SSL certs aren't verified
+class Net::LDAP::Connection
+  def self.wrap_with_ssl(io)
+    raise Net::LDAP::LdapError, "OpenSSL is unavailable" unless Net::LDAP::HasOpenSSL
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    conn = OpenSSL::SSL::SSLSocket.new(io, ctx)
+    conn.connect
+    conn.sync_close = true
+
+    conn.extend(GetbyteForSSLSocket) unless conn.respond_to?(:getbyte)
+
+    conn
+  end
+end
+
+```
+
 # Installation
 
 This module can be placed in your puppet module path and will be pluginsync'd to the master.
